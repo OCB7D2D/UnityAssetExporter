@@ -1,0 +1,23 @@
+name: Create UPM branches
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Create UPM branch
+        uses: hecomi/create-upm-branch-action@main
+        with:
+          git-tag: ${{ github.ref_name }}
+          pkg-root-dir-path: Assets
+          main-branch: master
+          upm-branch: upm
