@@ -1,0 +1,7 @@
+{
+    "name": "ch.ocbnet.unityassetexporter",
+    "displayName": "Unity3D Bundle Exporter",
+    "version": "0.6.0",
+    "unity": "2018.3",
+    "description": "Easily create and export unity3d resource bundles with multiple assets."
+}

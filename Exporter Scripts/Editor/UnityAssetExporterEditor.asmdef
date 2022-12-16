@@ -1,0 +1,16 @@
+{
+    "name": "UnityAssetExporterEditor",
+    "rootNamespace": "UnityAssetExporter",
+    "references": [
+        "GUID:3cc7fdc54d57afc4e90c031a8d0b7135"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
