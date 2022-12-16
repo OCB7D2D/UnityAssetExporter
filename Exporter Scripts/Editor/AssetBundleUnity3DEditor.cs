@@ -52,6 +52,8 @@ namespace UnityAssetExporter
             string fpath = string.IsNullOrEmpty(script.Path) ? "" : Path.GetDirectoryName(script.Path);
             string fname = string.IsNullOrEmpty(script.Path) ? "" : Path.GetFileName(script.Path);
 
+            GUILayout.Space(6);
+
             script.IncludeAssetsFromFolders = GUILayout.Toggle(
                 script.IncludeAssetsFromFolders,
                 "Include assets from folders",
@@ -64,6 +66,11 @@ namespace UnityAssetExporter
                 "Search folders recursively",
                 GUILayout.Height(20));
             EditorGUI.EndDisabledGroup();
+
+            script.VerboseLogging = GUILayout.Toggle(
+                script.VerboseLogging,
+                "Log included asset paths",
+                GUILayout.Height(20));
 
             GUILayout.Space(20);
 
@@ -127,11 +134,36 @@ namespace UnityAssetExporter
                         CollectAssets(obj, ref assets,
                             script.SearchFoldersRecursively);
                     foreach (var asset in assets)
-                        Debug.LogFormat(" exporting {0} ({1})",
-                            AssetDatabase.GetAssetPath(asset),
-                            asset.GetType().ToString());
+                    {
+                        if (script.VerboseLogging)
+                        {
+                            Debug.LogFormat(
+                                "  found {0}\n   of type {1}\n",
+                                AssetDatabase.GetAssetPath(asset),
+                                asset.GetType().ToString());
+                        }
+                    }
                     exports = assets.ToArray();
                 }
+
+                // Create summary to report to Zilox ;)
+                var aggregated = new SortedDictionary<string, int>();
+                foreach (var asset in exports)
+                {
+                    var type = asset.GetType().ToString();
+                    if (aggregated.ContainsKey(type))
+                        aggregated[type] += 1;
+                    else aggregated.Add(type, 1);
+                }
+                string summary = string.Format(
+                    "Exporting {0} Asset(s)\n",
+                    exports.Length);
+                foreach (var kv in aggregated)
+                {
+                    summary += string.Format("  {0} [{1}]",
+                        kv.Value, kv.Key);
+                }
+                Debug.Log(summary);
 
                 BuildAssetBundleOptions build_options = 0;
 

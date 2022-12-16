@@ -26,6 +26,9 @@ namespace UnityAssetExporter
         [HideInInspector]
         public int Compression = 1;
 
+        [HideInInspector]
+        public bool VerboseLogging = false;
+
         [Space(10)]
 
         [Tooltip("Drag objects to include in the export here")]
