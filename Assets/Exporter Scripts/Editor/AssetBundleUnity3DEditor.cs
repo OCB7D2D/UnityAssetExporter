@@ -122,7 +122,8 @@ namespace UnityAssetExporter
             {
 
                 PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64, new GraphicsDeviceType[] {
-                GraphicsDeviceType.Direct3D11, GraphicsDeviceType.OpenGLCore, GraphicsDeviceType.Vulkan });
+                    GraphicsDeviceType.Direct3D11, GraphicsDeviceType.OpenGLCore,
+                    GraphicsDeviceType.Vulkan /*, GraphicsDeviceType.Metal */ });
 
                 // By default we export everything in the list
                 UnityEngine.Object[] exports = script.Objects;
@@ -165,26 +166,26 @@ namespace UnityAssetExporter
                 }
                 Debug.Log(summary);
 
-                BuildAssetBundleOptions build_options = 0;
+                BuildAssetBundleOptions options = 0;
 
-                if (script.CreateDeterministicAssetBundle) build_options
+                if (script.CreateDeterministicAssetBundle) options
                         |= BuildAssetBundleOptions.DeterministicAssetBundle;
-                if (script.AppendHashToAssetBundleName) build_options
+                if (script.AppendHashToAssetBundleName) options
                         |= BuildAssetBundleOptions.AppendHashToAssetBundleName;
 
-                if (script.Compression == 1) build_options
+                if (script.Compression == 1) options
                         |= BuildAssetBundleOptions.ChunkBasedCompression;
-                if (script.Compression == 2) build_options
+                if (script.Compression == 2) options
                         |= BuildAssetBundleOptions.UncompressedAssetBundle;
 
                 #pragma warning disable CS0618 //  Type or member is obsolete
                 // We need to use obsolete function, since new `BuildAssetBundles`
                 // does not allow to store the bundle outside project directory.
-                build_options |= BuildAssetBundleOptions.CollectDependencies;
-                build_options |= BuildAssetBundleOptions.CompleteAssets;
+                options |= BuildAssetBundleOptions.CollectDependencies;
+                options |= BuildAssetBundleOptions.CompleteAssets;
                 // Call the actual exporting functionality
-                BuildPipeline.BuildAssetBundle(null, exports,
-                    export, build_options, BuildTarget.StandaloneWindows64);
+                BuildPipeline.BuildAssetBundle(null, exports, export,
+                    options, BuildTarget.StandaloneWindows64);
                 #pragma warning restore CS0618 //  Type or member is obsolete
 
                 /* Modern code partially works, but not really suited for our need
