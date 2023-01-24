@@ -34,8 +34,9 @@ namespace UnityAssetExporter
                 {
                     UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath
                         <UnityEngine.Object>(AssetDatabase.GUIDToAssetPath(guid));
+                    string fname = AssetDatabase.GetAssetPath(asset);
                     if (recursive) CollectAssets(asset, ref exports, recursive);
-                    else if (!AssetDatabase.IsValidFolder(path)) exports.Add(asset);
+                    else if (!AssetDatabase.IsValidFolder(fname)) exports.Add(asset);
                 }
             }
             // Just add as is to export
@@ -178,7 +179,7 @@ namespace UnityAssetExporter
                 if (script.Compression == 2) options
                         |= BuildAssetBundleOptions.UncompressedAssetBundle;
 
-                #pragma warning disable CS0618 //  Type or member is obsolete
+#pragma warning disable CS0618 //  Type or member is obsolete
                 // We need to use obsolete function, since new `BuildAssetBundles`
                 // does not allow to store the bundle outside project directory.
                 options |= BuildAssetBundleOptions.CollectDependencies;
@@ -186,7 +187,7 @@ namespace UnityAssetExporter
                 // Call the actual exporting functionality
                 BuildPipeline.BuildAssetBundle(null, exports, export,
                     options, BuildTarget.StandaloneWindows64);
-                #pragma warning restore CS0618 //  Type or member is obsolete
+#pragma warning restore CS0618 //  Type or member is obsolete
 
                 /* Modern code partially works, but not really suited for our need
                  * Can't store outside of project directory (we could move it)
@@ -236,14 +237,14 @@ namespace UnityAssetExporter
     {
         public static string GetRelativePath(string relativeTo, string path)
         {
-            #if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+#if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
             return Path.GetRelativePath(relativeTo, path);
-            #else
+#else
             return GetRelativePathPolyfill(relativeTo, path);
-            #endif
+#endif
         }
 
-        #if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
+#if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
         static string GetRelativePathPolyfill(string relativeTo, string path)
         {
             path = Path.GetFullPath(path);
@@ -290,7 +291,7 @@ namespace UnityAssetExporter
         static bool IsCaseSensitive =>
             !(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ||
             RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
-        #endif
+#endif
     }
 
 }
