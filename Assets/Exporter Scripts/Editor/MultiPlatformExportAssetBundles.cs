@@ -12,8 +12,9 @@ namespace UnityAssetExporter
     {
         static void SaveBundleFromSelection(BuildAssetBundleOptions options)
         {
-            string path = EditorUtility.SaveFilePanel("Save Unity3D AssetBundle", "",
-                "unity3d", "Please enter a file name to save the unity3d resource bundle to");
+            string path = EditorUtility.SaveFilePanel(
+                "Save Unity3D AssetBundle", "",
+                "assets", "unity3d");
             if (path.Length != 0)
             {
                 // include the following Graphic APIs
