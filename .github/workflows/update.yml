@@ -1,4 +1,4 @@
-name: Create UPM branches
+name: Update UPM master branch
 
 on:
   push:
@@ -14,10 +14,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create UPM branch
+      - name: Update UPM master branch
         uses: hecomi/create-upm-branch-action@main
         with:
-          git-tag: ${{ github.ref_name }}
+          git-tag: master
           pkg-root-dir-path: Assets
           main-branch: master
           upm-branch: upm

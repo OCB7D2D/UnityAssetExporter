@@ -28,7 +28,7 @@ https://github.com/OCB7D2D/UnityAssetExporter.git#upm@master
 
 You may also use a specific version by specifying a release:
 
-https://github.com/OCB7D2D/UnityAssetExporter.git#upm@0.6.3
+https://github.com/OCB7D2D/UnityAssetExporter.git#upm@0.6.5
 
 See https://github.com/OCB7D2D/UnityAssetExporter/branches
 

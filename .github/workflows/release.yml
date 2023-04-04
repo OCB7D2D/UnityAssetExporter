@@ -1,4 +1,4 @@
-name: Create UPM branches
+name: Create UPM tag branch
 
 on:
   create:
@@ -14,7 +14,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Create UPM branch
+      - name: Create UPM tag branch
         uses: hecomi/create-upm-branch-action@main
         with:
           git-tag: ${{ github.ref_name }}
