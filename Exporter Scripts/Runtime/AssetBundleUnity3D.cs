@@ -29,6 +29,25 @@ namespace UnityAssetExporter
         [HideInInspector]
         public bool VerboseLogging = false;
 
+        [HideInInspector]
+        public bool ShowPlatformTargets = false;
+        [HideInInspector]
+        public bool StandaloneWindows = true;
+        [HideInInspector]
+        public bool StandaloneMacOSX = false;
+        [HideInInspector]
+        public bool StandaloneLinux = false;
+        [HideInInspector]
+        public bool StripRedundantAPIs = true;
+        [HideInInspector]
+        public bool WantD3D11 = true;
+        [HideInInspector]
+        public bool WantOpenGL = true;
+        [HideInInspector]
+        public bool WantVulkan = true;
+        [HideInInspector]
+        public bool WantMetal = true;
+
         [Space(10)]
 
         [Tooltip("Drag objects to include in the export here")]

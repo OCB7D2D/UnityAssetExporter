@@ -43,6 +43,18 @@ namespace UnityAssetExporter
             else exports.Add(root);
         }
 
+        // Helpers to determine if a graphics API is available according to build targets selected
+        private static bool SupportsOpenGL(AssetBundleUnity3D script) => script.StandaloneWindows | script.StandaloneLinux | script.StandaloneMacOSX;
+        private static bool SupportsVulkan(AssetBundleUnity3D script) => script.StandaloneWindows | script.StandaloneLinux;
+        private static bool SupportsD3D11(AssetBundleUnity3D script) => script.StandaloneWindows;
+        private static bool SupportsMetal(AssetBundleUnity3D script) => script.StandaloneMacOSX;
+
+        // Helpers to determine if a build target should be actually built
+        private static bool BuildOpenGL(BuildTarget target, AssetBundleUnity3D script) => script.WantOpenGL;
+        private static bool BuildVulkan(BuildTarget target, AssetBundleUnity3D script) => script.WantVulkan && target != BuildTarget.StandaloneOSX;
+        private static bool BuildD3D11(BuildTarget target, AssetBundleUnity3D script) => script.WantD3D11 && target == BuildTarget.StandaloneWindows64;
+        private static bool BuildMetal(BuildTarget target, AssetBundleUnity3D script) => script.WantMetal && target == BuildTarget.StandaloneOSX;
+
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
@@ -70,10 +82,79 @@ namespace UnityAssetExporter
 
             script.VerboseLogging = GUILayout.Toggle(
                 script.VerboseLogging,
-                "Log included asset paths",
+                "Enable Verbose Logging",
                 GUILayout.Height(20));
 
-            GUILayout.Space(20);
+            GUILayout.Space(12);
+
+            if (script.ShowPlatformTargets = EditorGUILayout.Foldout(
+                script.ShowPlatformTargets, "Target Platforms"))
+            {
+
+                GUILayout.Space(6);
+
+                script.StandaloneWindows = GUILayout.Toggle(
+                    script.StandaloneWindows,
+                    "Standalone Windows",
+                    GUILayout.Height(20));
+                script.StandaloneMacOSX = GUILayout.Toggle(
+                    script.StandaloneMacOSX,
+                    "Standalone Mac OSX",
+                    GUILayout.Height(20));
+
+                // Linux not required when stripping if windows is active
+                // This is due to linux being a subset of APIs windows has
+                EditorGUI.BeginDisabledGroup(script.StripRedundantAPIs
+                    && script.StandaloneWindows);
+                script.StandaloneLinux = GUILayout.Toggle(
+                    script.StandaloneLinux,
+                    "Standalone Linux",
+                    GUILayout.Height(20));
+                EditorGUI.EndDisabledGroup();
+
+                GUILayout.Space(8);
+
+                script.StripRedundantAPIs = GUILayout.Toggle(
+                    script.StripRedundantAPIs,
+                    "Strip redundant APIs",
+                    GUILayout.Height(20));
+
+                GUILayout.Space(8);
+
+                GUILayout.Label("Graphics API support", GUILayout.Height(20));
+
+                GUILayout.Space(6);
+
+                EditorGUI.BeginDisabledGroup(!SupportsOpenGL(script));
+                script.WantOpenGL = GUILayout.Toggle(
+                    script.WantOpenGL,
+                    "OpenGL (Win/Mac/Linux)",
+                    GUILayout.Height(20));
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(!SupportsVulkan(script));
+                script.WantVulkan = GUILayout.Toggle(
+                    script.WantVulkan,
+                    "Vulkan (Win/Linux)",
+                    GUILayout.Height(20));
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(!SupportsD3D11(script));
+                script.WantD3D11 = GUILayout.Toggle(
+                    script.WantD3D11,
+                    "Direct 3D 11 (Windows only)",
+                    GUILayout.Height(20));
+                EditorGUI.EndDisabledGroup();
+
+                EditorGUI.BeginDisabledGroup(!SupportsMetal(script));
+                script.WantMetal = GUILayout.Toggle(
+                    script.WantMetal,
+                    "Metal (MacOSX only)",
+                    GUILayout.Height(20));
+                EditorGUI.EndDisabledGroup();
+            }
+
+            GUILayout.Space(12);
 
             script.CreateDeterministicAssetBundle = GUILayout.Toggle(
                 script.CreateDeterministicAssetBundle,
@@ -121,10 +202,6 @@ namespace UnityAssetExporter
 
             if (GUILayout.Button("Export unity3d resource", GUILayout.Height(48)))
             {
-
-                PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64, new GraphicsDeviceType[] {
-                    GraphicsDeviceType.Direct3D11, GraphicsDeviceType.OpenGLCore,
-                    GraphicsDeviceType.Vulkan /*, GraphicsDeviceType.Metal */ });
 
                 // By default we export everything in the list
                 UnityEngine.Object[] exports = script.Objects;
@@ -179,15 +256,23 @@ namespace UnityAssetExporter
                 if (script.Compression == 2) options
                         |= BuildAssetBundleOptions.UncompressedAssetBundle;
 
-#pragma warning disable CS0618 //  Type or member is obsolete
                 // We need to use obsolete function, since new `BuildAssetBundles`
                 // does not allow to store the bundle outside project directory.
+                #pragma warning disable CS0618 //  Type or member is obsolete
                 options |= BuildAssetBundleOptions.CollectDependencies;
                 options |= BuildAssetBundleOptions.CompleteAssets;
-                // Call the actual exporting functionality
-                BuildPipeline.BuildAssetBundle(null, exports, export,
-                    options, BuildTarget.StandaloneWindows64);
-#pragma warning restore CS0618 //  Type or member is obsolete
+                #pragma warning restore CS0618 //  Type or member is obsolete
+
+                // Create a HashSet to mark APIs we have already exported
+                // Required to avoid exporting the same APIs more than once
+                HashSet<GraphicsDeviceType> seen = new HashSet<GraphicsDeviceType>();
+                if (script.StandaloneWindows) ExportAssetBundle(exports, export,
+                    options, BuildTarget.StandaloneWindows64, script, seen);
+                if (script.StandaloneMacOSX) ExportAssetBundle(exports, export,
+                    options, BuildTarget.StandaloneOSX, script, seen, ".mac");
+                if (script.StandaloneLinux && !(script.StripRedundantAPIs
+                    && script.StandaloneWindows)) ExportAssetBundle(exports, export,
+                    options, BuildTarget.StandaloneLinux64, script, seen, ".nix");
 
                 /* Modern code partially works, but not really suited for our need
                  * Can't store outside of project directory (we could move it)
@@ -228,6 +313,57 @@ namespace UnityAssetExporter
             }
         }
 
+        // Export asset bundle for specific platform (with optional suffix)
+        private void ExportAssetBundle(UnityEngine.Object[] exports,
+            string path, BuildAssetBundleOptions options, BuildTarget target,
+            AssetBundleUnity3D script, HashSet<GraphicsDeviceType> seen, string suffix = "")
+        {
+            GraphicsDeviceType[] apis = GetApis(target, script, seen);
+            // Mangle suffix into final filename
+            if (string.IsNullOrEmpty("suffix") == false)
+                path = Path.Join(Path.GetDirectoryName(path),
+                    Path.GetFileNameWithoutExtension(path)
+                        + suffix + Path.GetExtension(path));
+            PlayerSettings.SetGraphicsAPIs(target, apis);
+            // Give verbose log message to report use APIs
+            if (script.VerboseLogging) Debug.LogFormat(
+                "Create {0} with graphics API: {1}", Path.GetFileName(path),
+                string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
+            // Call the actual exporting functionality
+            #pragma warning disable CS0618 //  Type or member is obsolete
+            BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
+            #pragma warning restore CS0618 //  Type or member is obsolete
+        }
+
+        // Get an array of graphics APIs to build for target platform
+        private GraphicsDeviceType[] GetApis(BuildTarget target,
+            AssetBundleUnity3D script, HashSet<GraphicsDeviceType> seen)
+        {
+            List<GraphicsDeviceType> types =
+                new List<GraphicsDeviceType>();
+            if (SupportsOpenGL(script) && BuildOpenGL(target, script))
+                AddIfNotSeenYet(script, seen, types, GraphicsDeviceType.OpenGLCore);
+            if (SupportsVulkan(script) && BuildVulkan(target, script))
+                AddIfNotSeenYet(script, seen, types, GraphicsDeviceType.Vulkan);
+            if (SupportsD3D11(script) && BuildD3D11(target, script))
+                AddIfNotSeenYet(script, seen, types, GraphicsDeviceType.Direct3D11);
+            if (SupportsMetal(script) && BuildMetal(target, script))
+                AddIfNotSeenYet(script, seen, types, GraphicsDeviceType.Metal);
+            return types.ToArray();
+        }
+
+        // Helper to optionally strip duplicate graphlics APIs
+        // E.g. we may only want Metal vartiants for OSX, as
+        // windows variant already provides Vulkan API
+        private void AddIfNotSeenYet(
+            AssetBundleUnity3D script, HashSet<GraphicsDeviceType> seen,
+            List<GraphicsDeviceType> types, GraphicsDeviceType type)
+        {
+            if (script.StripRedundantAPIs)
+                if (seen.Contains(type)) return;
+            seen.Add(type); types.Add(type);
+        }
+
     }
 
 
@@ -237,14 +373,14 @@ namespace UnityAssetExporter
     {
         public static string GetRelativePath(string relativeTo, string path)
         {
-#if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+            #if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
             return Path.GetRelativePath(relativeTo, path);
-#else
+            #else
             return GetRelativePathPolyfill(relativeTo, path);
-#endif
+            #endif
         }
 
-#if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
+        #if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
         static string GetRelativePathPolyfill(string relativeTo, string path)
         {
             path = Path.GetFullPath(path);
@@ -291,7 +427,7 @@ namespace UnityAssetExporter
         static bool IsCaseSensitive =>
             !(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ||
             RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
-#endif
+        #endif
     }
 
 }
