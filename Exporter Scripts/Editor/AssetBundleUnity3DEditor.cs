@@ -209,7 +209,7 @@ namespace UnityAssetExporter
             {
                 string fpath = string.IsNullOrEmpty(script.Path) ? "" : Path.GetDirectoryName(script.Path);
                 string fname = string.IsNullOrEmpty(script.Path) ? "" : Path.GetFileName(script.Path);
-                if (string.IsNullOrEmpty(fpath)) fpath = Path.GetFullPath(Application.dataPath); 
+                if (string.IsNullOrEmpty(fpath)) fpath = Path.GetFullPath(Application.dataPath);
                 else fpath = Path.GetFullPath(Path.Join(Application.dataPath, fpath));
                 var opath = EditorUtility.SaveFilePanel("Unity3D AssetBundle Path", fpath,
                     string.IsNullOrEmpty(script.Path) ? "AssetBundle" : fname, "unity3d");
