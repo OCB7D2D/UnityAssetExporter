@@ -28,7 +28,7 @@ https://github.com/OCB7D2D/UnityAssetExporter.git#upm@master
 
 You may also use a specific version by specifying a release:
 
-https://github.com/OCB7D2D/UnityAssetExporter.git#upm@0.6.5
+https://github.com/OCB7D2D/UnityAssetExporter.git#upm@0.7.0
 
 See https://github.com/OCB7D2D/UnityAssetExporter/branches
 
@@ -66,13 +66,52 @@ be included in the export (fine-tune by toggling recursiveness).
 
 ![Selected Assets in Bundle3D](.images/unity-bundle-3d-folders.png)
 
+### Platform Specific Exporting
+
+Unfortunately unity can't build one unity3d bundle for all platforms,
+although most stuff will just work by using the windows specific bundles.
+This is due to windows having three graphics APIs: OpenGL, Vulkan and D3D11.
+These cover all of Linux APIs (OpenGL and Vulkan), but only partially Mac OSX,
+where we have OpenGL and Metal, which is the one API windows doesn't support.
+
+Note that this is only relevant in regard to shaders. Unfortunately most assets
+bundles will probably have "custom" shaders, e.g. even by adding some Material
+using the built-in shaders. Unity will still compile variants for them and try
+to pack them into the asset bundle too. Meaning that metal support is absent.
+
+![Selected Assets in Bundle3D](.images/unity-bundle-3d-platforms.png)
+
+Only solution is to have a separate asset bundles for Mac OSX metal support.
+Building those is easy with the new exporter. Problems arise when trying
+to distribute the different version and I have no easy fix for that.
+
+#### Strip redundant API variants option
+
+When this option is enabled, we will not include redundant APIs in the
+platform specific bundles. Windows bundle will include the three APIs
+it supports (OpenGL, Vulkan, D3D11) and Mac OSX bundle will only contain
+the assets for Metal Graphics API. The resulting asset bundle will be
+suffices with ".metal" instead of ".mac" if only Metal API is included
+in the Mac OSX platform build.
+
+Currently the consensus is that this approach should be safe and only
+Mac Users wanting to use the Metal API need the custom asset bundle.
+Those using OpenGL should be able to use the regular windows bundle.
+
+#### Separate shaders only option
+
+Enabling this option will only include the shaders in the platform
+specific bundle. This is only useful if you load and assign the
+shaders programmatically.
 
 ## Changelog
 
 ### Version 0.7.0
 
-- Add platform specific bundle options
-- May address MacOSX issues (e.g. shaders)
+- Add platform specific bundle options  
+  To address MacOSX issues (e.g. shaders)
+- Implement proper undo for unity editor
+- Force shaders to build all graphics api
 - Use our custom UPM packaging action
 
 ### Version 0.6.5

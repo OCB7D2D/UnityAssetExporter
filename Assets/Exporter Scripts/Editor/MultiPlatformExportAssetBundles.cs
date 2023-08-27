@@ -18,13 +18,21 @@ namespace UnityAssetExporter
             if (path.Length != 0)
             {
                 // include the following Graphic APIs
-                PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneWindows64, new GraphicsDeviceType[] {
-                    GraphicsDeviceType.Direct3D11, GraphicsDeviceType.OpenGLCore,
-                    GraphicsDeviceType.Vulkan /*, GraphicsDeviceType.Metal */ });
-                // Build the resource file from the active selection.
+                // Can't build dedicated MacOSX support
+                var target = BuildTarget.StandaloneWindows64;
+                var apis = new GraphicsDeviceType[] {
+                    GraphicsDeviceType.Direct3D11,
+                    GraphicsDeviceType.OpenGLCore,
+                    GraphicsDeviceType.Vulkan };
 
                 // Build the resource file from the active selection.
                 Object[] selection = Selection.GetFiltered(typeof(Object), SelectionMode.DeepAssets);
+
+                // Update the player settings to correspond to our export settings
+                var oldUseDault = PlayerSettings.GetUseDefaultGraphicsAPIs(target);
+                var oldGfxAPIs = PlayerSettings.GetGraphicsAPIs(target);
+                PlayerSettings.SetUseDefaultGraphicsAPIs(target, false);
+                PlayerSettings.SetGraphicsAPIs(target, apis);
 
                 #pragma warning disable CS0618 //  Type or member is obsolete
                 // We need to use obsolete function, since new `BuildAssetBundles`
@@ -35,6 +43,10 @@ namespace UnityAssetExporter
                     options, BuildTarget.StandaloneWindows64);
                 #pragma warning restore CS0618 //  Type or member is obsolete
                 Selection.objects = selection;
+
+                // Restore previous settings like any civilized code would do
+                PlayerSettings.SetUseDefaultGraphicsAPIs(target, oldUseDault);
+                PlayerSettings.SetGraphicsAPIs(target, oldGfxAPIs);
             }
         }
 
