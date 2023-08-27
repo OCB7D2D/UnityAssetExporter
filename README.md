@@ -65,3 +65,33 @@ folders directly to the "Objects" list and everything in it will
 be included in the export (fine-tune by toggling recursiveness).
 
 ![Selected Assets in Bundle3D](.images/unity-bundle-3d-folders.png)
+
+
+## Changelog
+
+### Version 0.7.0
+
+- Add platform specific bundle options
+- May address MacOSX issues (e.g. shaders)
+- Use our custom UPM packaging action
+
+### Version 0.6.5
+
+- Fix deployment issue and version
+- Fix default filename for old script exporter
+
+### Version 0.6.4
+
+- Fix folder includes to not start from parent folder
+
+### Version 0.6.3
+
+- Fix issue when changing options without game loaded
+
+### Version 0.6.2
+
+- Add old exporter script with different compression options
+
+### Version 0.6.0
+
+- Initial version
