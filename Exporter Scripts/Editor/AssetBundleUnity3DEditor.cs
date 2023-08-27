@@ -250,19 +250,16 @@ namespace UnityAssetExporter
                     foreach (var obj in script.Objects)
                         CollectAssets(obj, ref assets,
                             script.SearchFoldersRecursively);
-                    foreach (var asset in assets)
-                    {
-                        if (script.VerboseLogging)
-                        {
+                    if (script.VerboseLogging)
+                        foreach (var asset in assets)
                             Debug.LogFormat(
                                 "  found {0}\n   of type {1}\n",
                                 AssetDatabase.GetAssetPath(asset),
                                 asset.GetType().ToString());
-                        }
-                    }
                     exports = assets.ToArray();
                 }
 
+                /*
                 // Create summary to report to Zilox ;)
                 var aggregated = new SortedDictionary<string, int>();
                 foreach (var asset in exports)
@@ -281,6 +278,7 @@ namespace UnityAssetExporter
                         kv.Value, kv.Key);
                 }
                 Debug.Log(summary);
+                */
 
                 BuildAssetBundleOptions options = 0;
 
@@ -368,21 +366,33 @@ namespace UnityAssetExporter
                     Path.GetFileNameWithoutExtension(path)
                         + suffix + Path.GetExtension(path));
             // Update the player settings to correspond to our export settings
-            var oldUseDault = PlayerSettings.GetUseDefaultGraphicsAPIs(target);
+            var oldTarget = EditorUserBuildSettings.activeBuildTarget;
+            var oldDefaultAPI = PlayerSettings.GetUseDefaultGraphicsAPIs(target);
             var oldGfxAPIs = PlayerSettings.GetGraphicsAPIs(target);
+            // EditorUserBuildSettings.SwitchActiveBuildTarget(
+            //     BuildTargetGroup.Standalone, target);
             PlayerSettings.SetUseDefaultGraphicsAPIs(target, false);
             PlayerSettings.SetGraphicsAPIs(target, apis);
-            // Give verbose log message to report use APIs
-            if (script.VerboseLogging) Debug.LogFormat(
-                "Create {0} with graphics API: {1}", Path.GetFileName(path),
-                string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
-            // Call the actual exporting functionality
-            #pragma warning disable CS0618 // Type or member is obsolete
-            BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
-            #pragma warning restore CS0618 // Type or member is obsolete
-            // Restore previous settings like any civilized code would do
-            PlayerSettings.SetUseDefaultGraphicsAPIs(target, oldUseDault);
-            PlayerSettings.SetGraphicsAPIs(target, oldGfxAPIs);
+            try
+            {
+                // Give verbose log message to report use APIs
+                if (script.VerboseLogging) Debug.LogFormat(
+                    "Create {0} with graphics API: {1}", Path.GetFileName(path),
+                    string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
+                // Call the actual exporting functionality
+                #pragma warning disable CS0618 // Type or member is obsolete
+                BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
+                #pragma warning restore CS0618 // Type or member is obsolete
+            }
+            finally
+            {
+                // Restore previous settings like any civilized code would do
+                PlayerSettings.SetGraphicsAPIs(target, oldGfxAPIs);
+                PlayerSettings.SetUseDefaultGraphicsAPIs(target, oldDefaultAPI);
+                // Without this next unity startup may complain about mac target!?
+                EditorUserBuildSettings.SwitchActiveBuildTarget(
+                    BuildTargetGroup.Standalone, oldTarget);
+            }
         }
 
         // Get an array of graphics APIs to build for target platform
