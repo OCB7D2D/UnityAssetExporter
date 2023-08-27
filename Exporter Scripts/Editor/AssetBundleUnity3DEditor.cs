@@ -55,69 +55,112 @@ namespace UnityAssetExporter
         private static bool BuildD3D11(BuildTarget target, AssetBundleUnity3D script) => script.WantD3D11 && target == BuildTarget.StandaloneWindows64;
         private static bool BuildMetal(BuildTarget target, AssetBundleUnity3D script) => script.WantMetal && target == BuildTarget.StandaloneOSX;
 
+        public bool ToggleUI(ref bool value, string label)
+        {
+            bool changed = GUILayout.Toggle(
+                value, label, GUILayout.Height(20));
+            // Do nothing if it didn't change
+            if (changed == value) return value;
+            // Record the undo action for this value
+            var prefix = changed ? "Enabled " : "Disabled ";
+            Undo.RecordObject((AssetBundleUnity3D)target, prefix + label);
+            // Update the reference
+            value = changed;
+            // Allow chaining
+            return value;
+        }
+
+        public bool FoldoutUI(ref bool value, string label)
+        {
+            bool changed = EditorGUILayout.Foldout(
+                value, label, true);
+            // Do nothing if it didn't change
+            if (changed == value) return value;
+            // Record the undo action for this value
+            var prefix = changed ? "Opened " : "Closed";
+            Undo.RecordObject((AssetBundleUnity3D)target, prefix + label);
+            // Update the reference
+            value = changed;
+            // Allow chaining
+            return value;
+        }
+
+        private int PopupUI(ref int value, string label, string[] options)
+        {
+            int changed = EditorGUILayout.Popup(
+                label, value, options);
+            // Do nothing if it didn't change
+            if (changed == value) return value;
+            // Record the undo action for this value
+            Undo.RecordObject((AssetBundleUnity3D)target,
+                $"Set {label} to {options[changed]}");
+            // Update the reference
+            value = changed;
+            // Allow chaining
+            return value;
+        }
+
+        private string TextFieldUI(ref string value, string label)
+        {
+            string changed = GUILayout.TextField(value);
+            // Do nothing if it didn't change
+            if (changed == value) return value;
+            // Record the undo action for this value
+            Undo.RecordObject((AssetBundleUnity3D)target, $"Changed {label}");
+            // Update the reference
+            value = changed;
+            // Allow chaining
+            return value;
+        }
+
         public override void OnInspectorGUI()
         {
             base.OnInspectorGUI();
+
             var script = (AssetBundleUnity3D)target;
             if (string.IsNullOrEmpty(script.Path))
                 script.Path = string.Empty;
 
-            string fpath = string.IsNullOrEmpty(script.Path) ? "" : Path.GetDirectoryName(script.Path);
-            string fname = string.IsNullOrEmpty(script.Path) ? "" : Path.GetFileName(script.Path);
-
             GUILayout.Space(6);
 
-            script.IncludeAssetsFromFolders = GUILayout.Toggle(
-                script.IncludeAssetsFromFolders,
-                "Include assets from folders",
-                GUILayout.Height(20));
+            ToggleUI(ref script.IncludeAssetsFromFolders,
+                "Include assets from folders");
 
             EditorGUI.BeginDisabledGroup(
                 !script.IncludeAssetsFromFolders);
-            script.SearchFoldersRecursively = GUILayout.Toggle(
-                script.SearchFoldersRecursively,
-                "Search folders recursively",
-                GUILayout.Height(20));
+            ToggleUI(ref script.SearchFoldersRecursively,
+                "Search folders recursively");
             EditorGUI.EndDisabledGroup();
 
-            script.VerboseLogging = GUILayout.Toggle(
-                script.VerboseLogging,
-                "Enable Verbose Logging",
-                GUILayout.Height(20));
+            ToggleUI(ref script.VerboseLogging,
+                "Enable Verbose Logging");
 
             GUILayout.Space(12);
 
-            if (script.ShowPlatformTargets = EditorGUILayout.Foldout(
-                script.ShowPlatformTargets, "Target Platforms"))
+            if (FoldoutUI(ref script.ShowPlatformTargets, "Target Platforms"))
             {
 
                 GUILayout.Space(6);
 
-                script.StandaloneWindows = GUILayout.Toggle(
-                    script.StandaloneWindows,
-                    "Standalone Windows",
-                    GUILayout.Height(20));
-                script.StandaloneMacOSX = GUILayout.Toggle(
-                    script.StandaloneMacOSX,
-                    "Standalone Mac OSX",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.StandaloneWindows,
+                    "Standalone Windows");
+                ToggleUI(ref script.StandaloneMacOSX,
+                    "Standalone Mac OSX");
 
                 // Linux not required when stripping if windows is active
                 // This is due to linux being a subset of APIs windows has
                 EditorGUI.BeginDisabledGroup(script.StripRedundantAPIs
                     && script.StandaloneWindows);
-                script.StandaloneLinux = GUILayout.Toggle(
-                    script.StandaloneLinux,
-                    "Standalone Linux",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.StandaloneLinux,
+                    "Standalone Linux");
                 EditorGUI.EndDisabledGroup();
 
                 GUILayout.Space(8);
 
-                script.StripRedundantAPIs = GUILayout.Toggle(
-                    script.StripRedundantAPIs,
-                    "Strip redundant APIs",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.StripRedundantAPIs,
+                    "Strip redundant APIs");
+                ToggleUI(ref script.SeparateShaders,
+                    "Separate Shaders Only");
 
                 GUILayout.Space(8);
 
@@ -126,70 +169,65 @@ namespace UnityAssetExporter
                 GUILayout.Space(6);
 
                 EditorGUI.BeginDisabledGroup(!SupportsOpenGL(script));
-                script.WantOpenGL = GUILayout.Toggle(
-                    script.WantOpenGL,
-                    "OpenGL (Win/Mac/Linux)",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.WantOpenGL,
+                    "OpenGL (Win/Mac/Linux)");
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUI.BeginDisabledGroup(!SupportsVulkan(script));
-                script.WantVulkan = GUILayout.Toggle(
-                    script.WantVulkan,
-                    "Vulkan (Win/Linux)",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.WantVulkan,
+                    "Vulkan (Win/Linux)");
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUI.BeginDisabledGroup(!SupportsD3D11(script));
-                script.WantD3D11 = GUILayout.Toggle(
-                    script.WantD3D11,
-                    "Direct 3D 11 (Windows only)",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.WantD3D11,
+                    "Direct 3D 11 (Windows)");
                 EditorGUI.EndDisabledGroup();
 
                 EditorGUI.BeginDisabledGroup(!SupportsMetal(script));
-                script.WantMetal = GUILayout.Toggle(
-                    script.WantMetal,
-                    "Metal (MacOSX only)",
-                    GUILayout.Height(20));
+                ToggleUI(ref script.WantMetal,
+                    "Metal (Mac OSX)");
                 EditorGUI.EndDisabledGroup();
             }
 
             GUILayout.Space(12);
 
-            script.CreateDeterministicAssetBundle = GUILayout.Toggle(
-                script.CreateDeterministicAssetBundle,
-                "Create Deterministic Asset Bundle",
-                GUILayout.Height(20));
+            ToggleUI(ref script.CreateDeterministicAssetBundle,
+                "Create Deterministic Asset Bundle");
 
-            script.AppendHashToAssetBundleName = GUILayout.Toggle(
-                script.AppendHashToAssetBundleName,
-                "Append Hash To Asset Bundle Name",
-                GUILayout.Height(20));
+            ToggleUI(ref script.AppendHashToAssetBundleName,
+                "Append Hash To Asset Bundle Name");
 
             GUILayout.Space(10);
 
-            script.Compression = EditorGUILayout.Popup(
+            PopupUI(ref script.Compression,
                 "Bundle Compression",
-                script.Compression,
                 compressions);
 
             GUILayout.Space(20);
 
             if (GUILayout.Button("Set unity3d resource path", GUILayout.Height(24)))
             {
+                string fpath = string.IsNullOrEmpty(script.Path) ? "" : Path.GetDirectoryName(script.Path);
+                string fname = string.IsNullOrEmpty(script.Path) ? "" : Path.GetFileName(script.Path);
+                if (string.IsNullOrEmpty(fpath)) fpath = Path.GetFullPath(Application.dataPath); 
+                else fpath = Path.GetFullPath(Path.Join(Application.dataPath, fpath));
                 var opath = EditorUtility.SaveFilePanel("Unity3D AssetBundle Path", fpath,
                     string.IsNullOrEmpty(script.Path) ? "AssetBundle" : fname, "unity3d");
                 // Make folder relative to data path
                 // Allows users to move the project
                 if (Path.IsPathRooted(opath)) opath = PathUtil
                     .GetRelativePath(Application.dataPath, opath);
-                if (!string.IsNullOrEmpty(opath))
+                if (!string.IsNullOrEmpty(opath) && script.Path != opath)
+                {
+                    Undo.RecordObject(script,
+                        "Changed Bundle Path");
                     script.Path = opath;
+                }
             }
 
             GUILayout.Space(2);
 
-            script.Path = GUILayout.TextField(script.Path);
+            TextFieldUI(ref script.Path, "Bundle Path");
 
             // Render the rest only if path is valid
             if (string.IsNullOrEmpty(script.Path)) return;
@@ -268,11 +306,16 @@ namespace UnityAssetExporter
                 HashSet<GraphicsDeviceType> seen = new HashSet<GraphicsDeviceType>();
                 if (script.StandaloneWindows) ExportAssetBundle(exports, export,
                     options, BuildTarget.StandaloneWindows64, script, seen);
-                if (script.StandaloneMacOSX) ExportAssetBundle(exports, export,
-                    options, BuildTarget.StandaloneOSX, script, seen, ".mac");
-                if (script.StandaloneLinux && !(script.StripRedundantAPIs
-                    && script.StandaloneWindows)) ExportAssetBundle(exports, export,
-                    options, BuildTarget.StandaloneLinux64, script, seen, ".nix");
+                // Strip everything beside shaders if only shaders get separated
+                if (script.SeparateShaders) exports = exports.Where(
+                    x => typeof(Shader).IsAssignableFrom(x.GetType())).ToArray();
+                // Export platform specific bundles with the given assets
+                if (script.StandaloneMacOSX) ExportAssetBundle(exports,
+                    export, options, BuildTarget.StandaloneOSX, script, seen,
+                    seen.Contains(GraphicsDeviceType.OpenGLCore) ? ".metal" : ".mac");
+                if (script.StandaloneLinux && !(script.StripRedundantAPIs && script.StandaloneWindows))
+                    ExportAssetBundle(exports, export, options, BuildTarget.StandaloneLinux64,
+                        script, seen, seen.Contains(GraphicsDeviceType.Vulkan) ? ".metal" : ".nix");
 
                 /* Modern code partially works, but not really suited for our need
                  * Can't store outside of project directory (we could move it)
@@ -324,15 +367,22 @@ namespace UnityAssetExporter
                 path = Path.Join(Path.GetDirectoryName(path),
                     Path.GetFileNameWithoutExtension(path)
                         + suffix + Path.GetExtension(path));
+            // Update the player settings to correspond to our export settings
+            var oldUseDault = PlayerSettings.GetUseDefaultGraphicsAPIs(target);
+            var oldGfxAPIs = PlayerSettings.GetGraphicsAPIs(target);
+            PlayerSettings.SetUseDefaultGraphicsAPIs(target, false);
             PlayerSettings.SetGraphicsAPIs(target, apis);
             // Give verbose log message to report use APIs
             if (script.VerboseLogging) Debug.LogFormat(
                 "Create {0} with graphics API: {1}", Path.GetFileName(path),
                 string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
             // Call the actual exporting functionality
-            #pragma warning disable CS0618 //  Type or member is obsolete
+            #pragma warning disable CS0618 // Type or member is obsolete
             BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
-            #pragma warning restore CS0618 //  Type or member is obsolete
+            #pragma warning restore CS0618 // Type or member is obsolete
+            // Restore previous settings like any civilized code would do
+            PlayerSettings.SetUseDefaultGraphicsAPIs(target, oldUseDault);
+            PlayerSettings.SetGraphicsAPIs(target, oldGfxAPIs);
         }
 
         // Get an array of graphics APIs to build for target platform
@@ -360,8 +410,11 @@ namespace UnityAssetExporter
             List<GraphicsDeviceType> types, GraphicsDeviceType type)
         {
             if (script.StripRedundantAPIs)
+            {
                 if (seen.Contains(type)) return;
-            seen.Add(type); types.Add(type);
+                seen.Add(type);
+            }
+            types.Add(type);
         }
 
     }

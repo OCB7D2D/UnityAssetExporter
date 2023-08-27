@@ -47,6 +47,8 @@ namespace UnityAssetExporter
         public bool WantVulkan = true;
         [HideInInspector]
         public bool WantMetal = true;
+        [HideInInspector]
+        public bool SeparateShaders = false;
 
         [Space(10)]
 
