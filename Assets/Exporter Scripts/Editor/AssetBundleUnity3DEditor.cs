@@ -62,10 +62,12 @@ namespace UnityAssetExporter
             // Do nothing if it didn't change
             if (changed == value) return value;
             // Record the undo action for this value
-            var prefix = changed ? "Enabled " : "Disabled ";
-            Undo.RecordObject((AssetBundleUnity3D)target, prefix + label);
+            Undo.RecordObject((AssetBundleUnity3D)target,
+                changed ? "Enabled " : "Disabled " + label);
             // Update the reference
             value = changed;
+            // Make sure changes are persisted (play safe)
+            EditorUtility.SetDirty((AssetBundleUnity3D)target);
             // Allow chaining
             return value;
         }
@@ -77,10 +79,12 @@ namespace UnityAssetExporter
             // Do nothing if it didn't change
             if (changed == value) return value;
             // Record the undo action for this value
-            var prefix = changed ? "Opened " : "Closed";
-            Undo.RecordObject((AssetBundleUnity3D)target, prefix + label);
+            Undo.RecordObject((AssetBundleUnity3D)target,
+                changed ? "Opened " : "Closed" + label);
             // Update the reference
             value = changed;
+            // Make sure changes are persisted (play safe)
+            EditorUtility.SetDirty((AssetBundleUnity3D)target);
             // Allow chaining
             return value;
         }
@@ -96,6 +100,8 @@ namespace UnityAssetExporter
                 $"Set {label} to {options[changed]}");
             // Update the reference
             value = changed;
+            // Make sure changes are persisted (play safe)
+            EditorUtility.SetDirty((AssetBundleUnity3D)target);
             // Allow chaining
             return value;
         }
@@ -106,9 +112,12 @@ namespace UnityAssetExporter
             // Do nothing if it didn't change
             if (changed == value) return value;
             // Record the undo action for this value
-            Undo.RecordObject((AssetBundleUnity3D)target, $"Changed {label}");
+            Undo.RecordObject((AssetBundleUnity3D)target,
+                $"Changed {label} to {changed}");
             // Update the reference
             value = changed;
+            // Make sure changes are persisted (play safe)
+            EditorUtility.SetDirty((AssetBundleUnity3D)target);
             // Allow chaining
             return value;
         }
@@ -294,10 +303,10 @@ namespace UnityAssetExporter
 
                 // We need to use obsolete function, since new `BuildAssetBundles`
                 // does not allow to store the bundle outside project directory.
-                #pragma warning disable CS0618 //  Type or member is obsolete
+#pragma warning disable CS0618 //  Type or member is obsolete
                 options |= BuildAssetBundleOptions.CollectDependencies;
                 options |= BuildAssetBundleOptions.CompleteAssets;
-                #pragma warning restore CS0618 //  Type or member is obsolete
+#pragma warning restore CS0618 //  Type or member is obsolete
 
                 // Create a HashSet to mark APIs we have already exported
                 // Required to avoid exporting the same APIs more than once
@@ -380,9 +389,9 @@ namespace UnityAssetExporter
                     "Create {0} with graphics API: {1}", Path.GetFileName(path),
                     string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
                 // Call the actual exporting functionality
-                #pragma warning disable CS0618 // Type or member is obsolete
+#pragma warning disable CS0618 // Type or member is obsolete
                 BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
-                #pragma warning restore CS0618 // Type or member is obsolete
+#pragma warning restore CS0618 // Type or member is obsolete
             }
             finally
             {
@@ -436,14 +445,14 @@ namespace UnityAssetExporter
     {
         public static string GetRelativePath(string relativeTo, string path)
         {
-            #if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+#if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
             return Path.GetRelativePath(relativeTo, path);
-            #else
+#else
             return GetRelativePathPolyfill(relativeTo, path);
-            #endif
+#endif
         }
 
-        #if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
+#if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
         static string GetRelativePathPolyfill(string relativeTo, string path)
         {
             path = Path.GetFullPath(path);
@@ -490,7 +499,7 @@ namespace UnityAssetExporter
         static bool IsCaseSensitive =>
             !(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ||
             RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
-        #endif
+#endif
     }
 
 }
