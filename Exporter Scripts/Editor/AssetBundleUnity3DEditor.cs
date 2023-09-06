@@ -211,7 +211,7 @@ namespace UnityAssetExporter
                 ToggleUI(ref script.StripFogExp,
                     "Strip Exponential Fog variants");
                 ToggleUI(ref script.StripFogExp2,
-                    "Strip Exponential Squared Fog variants");
+                    "Strip ExpSquared Fog variants");
                 ToggleUI(ref script.StripFogNone,
                     "Strip None Fog variants");
 
@@ -611,7 +611,7 @@ namespace UnityAssetExporter
         public static int StrippedShaders = 0;
 
         // Multiple callback may be implemented.
-        public int callbackOrder { get { return -999999; } }
+        public int callbackOrder => int.MinValue;
 
         static ShaderKeyword FOG_EXP = new ShaderKeyword("FOG_EXP");
         static ShaderKeyword FOG_EXP2 = new ShaderKeyword("FOG_EXP2");
@@ -624,8 +624,8 @@ namespace UnityAssetExporter
             if (Cfg == null) return;
             // In development, don't strip any variants
             if (EditorUserBuildSettings.development) return;
-            // Keep statistics
-            int before = data.Count;
+            // Register some statistics to look at later
+            StripShaderVariantCounter.ShadersBefore = data.Count;
             // Process the variants array from behind
             for (int i = data.Count - 1; i != -1; --i)
             {
@@ -642,13 +642,28 @@ namespace UnityAssetExporter
                 else if (Cfg.StripFogLinear && isFogLinear) remove = true;
                 if (remove) data.RemoveAt(i);
             }
-            // Do some general statistics
-            CompiledShaders += data.Count;
-            StrippedShaders += before - data.Count;
             // Print a log if verbose logging is enabled
             if (Cfg.VerboseLogging) Debug.Log(string.Format(
-                "{0}: {1} variants stripped: {2}, compiling: {3}",
-                shader.name, snippet.passName, before - data.Count, data.Count));
+                "{0}: {1} variants stripped: {3}, compiling: {2}",
+                shader.name, snippet.passName, data.Count,
+                StripShaderVariantCounter.ShadersBefore - data.Count));
+        }
+    }
+
+    // Just a hook to get statistics very late in the process
+    class StripShaderVariantCounter : IPreprocessShaders
+    {
+        public static int ShadersBefore = -1;
+        // Multiple callback may be implemented (run late).
+        public int callbackOrder => int.MaxValue;
+        // Do the processing of shaders to potentially alter the shader variants to be compiled
+        public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
+        {
+            // Do some general statistics
+            if (ShadersBefore == -1) return;
+            StripShaderVariants.StrippedShaders += ShadersBefore - data.Count;
+            StripShaderVariants.CompiledShaders += data.Count;
+            ShadersBefore = -1;
         }
     }
 
