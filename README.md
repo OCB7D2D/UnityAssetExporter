@@ -106,6 +106,10 @@ shaders programmatically.
 
 ## Changelog
 
+### Version 0.7.2
+
+- Improve shader compile logging
+
 ### Version 0.7.1
 
 - Add explicit shader stripping options  

@@ -58,7 +58,7 @@
 		</txt>
 		
 		<!-- best jpg compression -->
-		<jpg disabled="false">
+		<jpg disabled="true">
 			<!-- recursively improve jpg compression -->
 			<file path="." file="*.jpg" recursive="true" />
 		</jpg>
