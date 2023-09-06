@@ -106,6 +106,11 @@ shaders programmatically.
 
 ## Changelog
 
+### Version 0.7.1
+
+- Add explicit shader stripping options  
+  Can ensure fog variants to be present
+
 ### Version 0.7.0
 
 - Add platform specific bundle options  

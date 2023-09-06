@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using UnityEditor;
+using UnityEditor.Build;
+using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -198,6 +200,43 @@ namespace UnityAssetExporter
                 EditorGUI.EndDisabledGroup();
             }
 
+            GUILayout.Space(6);
+
+            if (FoldoutUI(ref script.ShowShaderStripping, "Shader Stripping"))
+            {
+                GUILayout.Space(6);
+
+                ToggleUI(ref script.StripFogLinear,
+                    "Strip Linear Fog variants");
+                ToggleUI(ref script.StripFogExp,
+                    "Strip Exponential Fog variants");
+                ToggleUI(ref script.StripFogExp2,
+                    "Strip Exponential Squared Fog variants");
+                ToggleUI(ref script.StripFogNone,
+                    "Strip None Fog variants");
+
+                GUILayout.Space(8);
+
+                ToggleUI(ref script.StripInstancing,
+                    "Strip Instancing variants");
+
+                GUILayout.Space(8);
+
+                ToggleUI(ref script.StripLightmapDirCombined,
+                    "Strip Baked Directional Lightmap variants");
+                ToggleUI(ref script.StripLightmapPlain,
+                    "Strip Baked Non-Directional Lightmap variants");
+                ToggleUI(ref script.StripLightmapDynamicDirCombined,
+                    "Strip Realtime Directional Lightmap variants");
+                ToggleUI(ref script.StripLightmapDynamicPlain,
+                    "Strip Realtime Non-Directional Lightmap variants");
+                ToggleUI(ref script.StripLightmapShadowMask,
+                    "Strip Baked Shadow Mask Lightmap variants");
+                ToggleUI(ref script.StripLightmapSubtractive,
+                    "Strip Baked Subtractive Lightmap variants");
+
+            }
+
             GUILayout.Space(12);
 
             ToggleUI(ref script.CreateDeterministicAssetBundle,
@@ -303,10 +342,13 @@ namespace UnityAssetExporter
 
                 // We need to use obsolete function, since new `BuildAssetBundles`
                 // does not allow to store the bundle outside project directory.
-#pragma warning disable CS0618 //  Type or member is obsolete
+                #pragma warning disable CS0618 //  Type or member is obsolete
                 options |= BuildAssetBundleOptions.CollectDependencies;
                 options |= BuildAssetBundleOptions.CompleteAssets;
-#pragma warning restore CS0618 //  Type or member is obsolete
+                #pragma warning restore CS0618 //  Type or member is obsolete
+
+                StripShaderVariants.CompiledShaders = 0;
+                StripShaderVariants.StrippedShaders = 0;
 
                 // Create a HashSet to mark APIs we have already exported
                 // Required to avoid exporting the same APIs more than once
@@ -323,6 +365,10 @@ namespace UnityAssetExporter
                 if (script.StandaloneLinux && !(script.StripRedundantAPIs && script.StandaloneWindows))
                     ExportAssetBundle(exports, export, options, BuildTarget.StandaloneLinux64,
                         script, seen, seen.Contains(GraphicsDeviceType.Vulkan) ? ".metal" : ".nix");
+
+                if (StripShaderVariants.StrippedShaders + StripShaderVariants.CompiledShaders > 0)
+                    Debug.Log($"Compiled {StripShaderVariants.CompiledShaders} Shader"
+                        + $" Variants, {StripShaderVariants.StrippedShaders} Skipped");
 
                 /* Modern code partially works, but not really suited for our need
                  * Can't store outside of project directory (we could move it)
@@ -382,6 +428,41 @@ namespace UnityAssetExporter
             //     BuildTargetGroup.Standalone, target);
             PlayerSettings.SetUseDefaultGraphicsAPIs(target, false);
             PlayerSettings.SetGraphicsAPIs(target, apis);
+            // Get the old settings to be able to reset it once done with export
+            var gfxCfg = new SerializedObject(GraphicsSettings.GetGraphicsSettings());
+            var oldFogStripping = gfxCfg.FindProperty("m_FogStripping").boolValue;
+            var oldFogKeepLinear = gfxCfg.FindProperty("m_FogKeepLinear").boolValue;
+            var oldFogKeepExp = gfxCfg.FindProperty("m_FogKeepExp").boolValue;
+            var oldFogKeepExp2 = gfxCfg.FindProperty("m_FogKeepExp2").boolValue;
+            var oldFogStripInstancing = gfxCfg.FindProperty("m_InstancingStripping").intValue;
+            var oldLightmapStripping = gfxCfg.FindProperty("m_LightmapStripping").boolValue;
+            var oldLightmapKeepPlain = gfxCfg.FindProperty("m_LightmapKeepPlain").boolValue;
+            var oldLightmapKeepDirCombined = gfxCfg.FindProperty("m_LightmapKeepDirCombined").boolValue;
+            var oldLightmapKeepDynamicPlain = gfxCfg.FindProperty("m_LightmapKeepDynamicPlain").boolValue;
+            var oldLightmapKeepDynamicDirCombined = gfxCfg.FindProperty("m_LightmapKeepDynamicDirCombined").boolValue;
+            var oldLightmapKeepShadowMask = gfxCfg.FindProperty("m_LightmapKeepShadowMask").boolValue;
+            var oldLightmapKeepSubtractive = gfxCfg.FindProperty("m_LightmapKeepSubtractive").boolValue;
+            // Always enable shader variant stripping for best results
+            // Otherwise we are depending on the actual project setting
+            GraphicsSettings.logWhenShaderIsCompiled = script.VerboseLogging;
+            gfxCfg.FindProperty("m_FogStripping").boolValue = true;
+            gfxCfg.FindProperty("m_LightmapStripping").boolValue = true;
+            // Either fully strip instancing or keep it (not sure if "unused" makes much sense)
+            gfxCfg.FindProperty("m_InstancingStripping").intValue = script.StripInstancing ? 1 : 2;
+            gfxCfg.FindProperty("m_FogKeepLinear").boolValue = !script.StripFogLinear;
+            gfxCfg.FindProperty("m_FogKeepExp").boolValue = !script.StripFogExp;
+            gfxCfg.FindProperty("m_FogKeepExp2").boolValue = !script.StripFogExp2;
+            gfxCfg.FindProperty("m_LightmapKeepPlain").boolValue = !script.StripLightmapPlain;
+            gfxCfg.FindProperty("m_LightmapKeepDirCombined").boolValue = !script.StripLightmapDirCombined;
+            gfxCfg.FindProperty("m_LightmapKeepDynamicPlain").boolValue = !script.StripLightmapDynamicPlain;
+            gfxCfg.FindProperty("m_LightmapKeepDynamicDirCombined").boolValue = !script.StripLightmapDynamicDirCombined;
+            gfxCfg.FindProperty("m_LightmapKeepShadowMask").boolValue = !script.StripLightmapShadowMask;
+            gfxCfg.FindProperty("m_LightmapKeepSubtractive").boolValue = !script.StripLightmapSubtractive;
+            // Set config script for shader stripping
+            StripShaderVariants.Cfg = script;
+            // Update the global game settings
+            gfxCfg.ApplyModifiedProperties();
+
             try
             {
                 // Give verbose log message to report use APIs
@@ -389,18 +470,33 @@ namespace UnityAssetExporter
                     "Create {0} with graphics API: {1}", Path.GetFileName(path),
                     string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
                 // Call the actual exporting functionality
-#pragma warning disable CS0618 // Type or member is obsolete
+                #pragma warning disable CS0618 // Type or member is obsolete
                 BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
-#pragma warning restore CS0618 // Type or member is obsolete
+                #pragma warning restore CS0618 // Type or member is obsolete
             }
             finally
             {
+                StripShaderVariants.Cfg = null;
                 // Restore previous settings like any civilized code would do
                 PlayerSettings.SetGraphicsAPIs(target, oldGfxAPIs);
                 PlayerSettings.SetUseDefaultGraphicsAPIs(target, oldDefaultAPI);
                 // Without this next unity startup may complain about mac target!?
                 EditorUserBuildSettings.SwitchActiveBuildTarget(
                     BuildTargetGroup.Standalone, oldTarget);
+                // Reset low level values to roll back to old settings
+                gfxCfg.FindProperty("m_FogStripping").boolValue = oldFogStripping;
+                gfxCfg.FindProperty("m_FogKeepLinear").boolValue = oldFogKeepLinear;
+                gfxCfg.FindProperty("m_FogKeepExp").boolValue = oldFogKeepExp;
+                gfxCfg.FindProperty("m_FogKeepExp2").boolValue = oldFogKeepExp2;
+                gfxCfg.FindProperty("m_InstancingStripping").intValue = oldFogStripInstancing;
+                gfxCfg.FindProperty("m_LightmapStripping").boolValue = oldLightmapStripping;
+                gfxCfg.FindProperty("m_LightmapKeepPlain").boolValue = oldLightmapKeepPlain;
+                gfxCfg.FindProperty("m_LightmapKeepDirCombined").boolValue = oldLightmapKeepDirCombined;
+                gfxCfg.FindProperty("m_LightmapKeepDynamicPlain").boolValue = oldLightmapKeepDynamicPlain;
+                gfxCfg.FindProperty("m_LightmapKeepDynamicDirCombined").boolValue = oldLightmapKeepDynamicDirCombined;
+                gfxCfg.FindProperty("m_LightmapKeepShadowMask").boolValue = oldLightmapKeepShadowMask;
+                gfxCfg.FindProperty("m_LightmapKeepSubtractive").boolValue = oldLightmapKeepSubtractive;
+                gfxCfg.ApplyModifiedProperties();
             }
         }
 
@@ -445,14 +541,14 @@ namespace UnityAssetExporter
     {
         public static string GetRelativePath(string relativeTo, string path)
         {
-#if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+            #if NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER
             return Path.GetRelativePath(relativeTo, path);
-#else
+            #else
             return GetRelativePathPolyfill(relativeTo, path);
-#endif
+            #endif
         }
 
-#if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
+        #if !(NETCOREAPP2_0_OR_GREATER || NETSTANDARD2_1_OR_GREATER)
         static string GetRelativePathPolyfill(string relativeTo, string path)
         {
             path = Path.GetFullPath(path);
@@ -499,7 +595,61 @@ namespace UnityAssetExporter
         static bool IsCaseSensitive =>
             !(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ||
             RuntimeInformation.IsOSPlatform(OSPlatform.OSX));
-#endif
+        #endif
+    }
+
+
+    // Programatically strip certain shader variants
+    // Also useful to just keep count of what is done
+    class StripShaderVariants : IPreprocessShaders
+    {
+
+        // Assigned from outside to grab by us
+        public static AssetBundleUnity3D Cfg = null;
+
+        public static int CompiledShaders = 0;
+        public static int StrippedShaders = 0;
+
+        // Multiple callback may be implemented.
+        public int callbackOrder { get { return -999999; } }
+
+        static ShaderKeyword FOG_EXP = new ShaderKeyword("FOG_EXP");
+        static ShaderKeyword FOG_EXP2 = new ShaderKeyword("FOG_EXP2");
+        static ShaderKeyword FOG_LINEAR = new ShaderKeyword("FOG_LINEAR");
+
+        // Do the processing of shaders to potentially alter the shader variants to be compiled
+        public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
+        {
+            // Must have config
+            if (Cfg == null) return;
+            // In development, don't strip any variants
+            if (EditorUserBuildSettings.development) return;
+            // Keep statistics
+            int before = data.Count;
+            // Process the variants array from behind
+            for (int i = data.Count - 1; i != -1; --i)
+            {
+                bool remove = false;
+                bool isFogExp = data[i].shaderKeywordSet.IsEnabled(FOG_EXP);
+                bool isFogExp2 = data[i].shaderKeywordSet.IsEnabled(FOG_EXP2);
+                bool isFogLinear = data[i].shaderKeywordSet.IsEnabled(FOG_LINEAR);
+                // Debug.Log(shader.name + " Keywords " + string.Join(", ",
+                //     data[i].shaderKeywordSet.GetShaderKeywords()));
+                bool isFog = isFogExp | isFogExp2 | isFogLinear;
+                if (Cfg.StripFogNone && !isFog) remove = true;
+                else if (Cfg.StripFogExp && isFogExp) remove = true;
+                else if (Cfg.StripFogExp2 && isFogExp2) remove = true;
+                else if (Cfg.StripFogLinear && isFogLinear) remove = true;
+                if (remove) data.RemoveAt(i);
+            }
+            // Do some general statistics
+            CompiledShaders += data.Count;
+            StrippedShaders += before - data.Count;
+            // Print a log if verbose logging is enabled
+            if (Cfg.VerboseLogging) Debug.Log(string.Format(
+                "{0}: {1} variants stripped: {2}, compiling: {3}",
+                shader.name, snippet.passName, before - data.Count, data.Count));
+        }
     }
 
 }

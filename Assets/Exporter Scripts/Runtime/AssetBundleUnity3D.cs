@@ -50,6 +50,34 @@ namespace UnityAssetExporter
         [HideInInspector]
         public bool SeparateShaders = false;
 
+        [HideInInspector]
+        public bool ShowShaderStripping = false;
+        [HideInInspector]
+        // Might be safe to strip by default too
+        // But not 100% sure e.g. for shadow pass!?
+        public bool StripFogNone = false;
+        [HideInInspector]
+        public bool StripFogLinear = true;
+        [HideInInspector]
+        public bool StripFogExp = false;
+        [HideInInspector]
+        public bool StripFogExp2 = true;
+        [HideInInspector]
+        public bool StripInstancing = false;
+
+        [HideInInspector]
+        public bool StripLightmapPlain = true;
+        [HideInInspector]
+        public bool StripLightmapDirCombined = false;
+        [HideInInspector]
+        public bool StripLightmapDynamicPlain = true;
+        [HideInInspector]
+        public bool StripLightmapDynamicDirCombined = true;
+        [HideInInspector]
+        public bool StripLightmapShadowMask = true;
+        [HideInInspector]
+        public bool StripLightmapSubtractive = true;
+
         [Space(10)]
 
         [Tooltip("Drag objects to include in the export here")]
