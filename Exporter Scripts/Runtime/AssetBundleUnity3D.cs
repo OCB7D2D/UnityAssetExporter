@@ -52,6 +52,18 @@ namespace UnityAssetExporter
 
         [HideInInspector]
         public bool ShowShaderStripping = false;
+
+        [HideInInspector]
+        public bool StripMetaPass = false;
+        [HideInInspector]
+        public bool StripForwardBasePass = false;
+        [HideInInspector]
+        public bool StripForwardAddPass = false;
+        [HideInInspector]
+        public bool StripDeferredPass = false;
+        [HideInInspector]
+        public bool StripShadowCasterPass = false;
+
         [HideInInspector]
         // Might be safe to strip by default too
         // But not 100% sure e.g. for shadow pass!?
@@ -62,13 +74,14 @@ namespace UnityAssetExporter
         public bool StripFogExp = false;
         [HideInInspector]
         public bool StripFogExp2 = true;
+
         [HideInInspector]
         public bool StripInstancing = false;
 
         [HideInInspector]
         public bool StripLightmapPlain = true;
         [HideInInspector]
-        public bool StripLightmapDirCombined = false;
+        public bool StripLightmapDirCombined = true;
         [HideInInspector]
         public bool StripLightmapDynamicPlain = true;
         [HideInInspector]
