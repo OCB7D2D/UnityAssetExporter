@@ -57,10 +57,11 @@ namespace UnityAssetExporter
         private static bool BuildD3D11(BuildTarget target, AssetBundleUnity3D script) => script.WantD3D11 && target == BuildTarget.StandaloneWindows64;
         private static bool BuildMetal(BuildTarget target, AssetBundleUnity3D script) => script.WantMetal && target == BuildTarget.StandaloneOSX;
 
-        public bool ToggleUI(ref bool value, string label)
+        public bool ToggleUI(ref bool value, string label, string tooltip = null)
         {
-            bool changed = GUILayout.Toggle(
-                value, label, GUILayout.Height(20));
+            bool changed = GUILayout.Toggle(value,
+                new GUIContent(label, tooltip),
+                GUILayout.Height(20));
             // Do nothing if it didn't change
             if (changed == value) return value;
             // Record the undo action for this value
@@ -207,18 +208,45 @@ namespace UnityAssetExporter
                 GUILayout.Space(6);
 
                 ToggleUI(ref script.StripFogLinear,
-                    "Strip Linear Fog variants");
+                    "Strip Linear Fog variants",
+                    "When you know you don't use linear fog.");
                 ToggleUI(ref script.StripFogExp,
-                    "Strip Exponential Fog variants");
+                    "Strip Exponential Fog variants",
+                    "When you know you don't use exponential fog.");
                 ToggleUI(ref script.StripFogExp2,
-                    "Strip ExpSquared Fog variants");
+                    "Strip ExpSquared Fog variants",
+                    "When you know you don't use exp^2 fog.");
                 ToggleUI(ref script.StripFogNone,
-                    "Strip None Fog variants");
+                    "Strip None Fog variants",
+                    "Only enable if you are sure this is safe!");
+
+                GUILayout.Space(8);
+
+                ToggleUI(ref script.StripMetaPass,
+                    "Strip Meta passes",
+                    "Seem to be used for baked lightmaps.");
+                ToggleUI(ref script.StripDeferredPass,
+                    "Strip Deferred passes",
+                    "Deferred Shading allows more dynamic lights in the scene, " +
+                    "but only works on opaque (incl. cutout) materials. " +
+                    "Most of the time you want this disabled.");
+                ToggleUI(ref script.StripForwardBasePass,
+                    "Strip Forward Base passes",
+                    "Forward Rendering is the fallback mode supporting only a few dynamic lights. " +
+                    "Should be safe to strip, unless you use it for semi-transparent materials.");
+                ToggleUI(ref script.StripForwardAddPass,
+                    "Strip Forward Add passes",
+                    "Forward Rendering is the fallback mode supporting only a few dynamic lights. " +
+                    "Should be safe to strip, unless you use it for semi-transparent materials."); ;
+                ToggleUI(ref script.StripShadowCasterPass,
+                    "Strip Shadow Caster passes",
+                    "Enable this if you don't have or want to cast any shadows from materials.");
 
                 GUILayout.Space(8);
 
                 ToggleUI(ref script.StripInstancing,
-                    "Strip Instancing variants");
+                    "Strip Instancing variants",
+                    "Should be safe to strip if you know that no material will use geometry instancing.");
 
                 GUILayout.Space(8);
 
@@ -626,6 +654,12 @@ namespace UnityAssetExporter
             if (EditorUserBuildSettings.development) return;
             // Register some statistics to look at later
             StripShaderVariantCounter.ShadersBefore = data.Count;
+            // Strip certain pass variants in case render path is known to be unused
+            if (Cfg.StripMetaPass && snippet.passType == PassType.Meta) data.Clear();
+            else if (Cfg.StripDeferredPass && snippet.passType == PassType.Deferred) data.Clear(); 
+            else if (Cfg.StripForwardBasePass && snippet.passType == PassType.ForwardBase) data.Clear(); 
+            else if (Cfg.StripForwardAddPass && snippet.passType == PassType.ForwardAdd) data.Clear();
+            else if (Cfg.StripShadowCasterPass && snippet.passType == PassType.ShadowCaster) data.Clear();
             // Process the variants array from behind
             for (int i = data.Count - 1; i != -1; --i)
             {
