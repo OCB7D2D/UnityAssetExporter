@@ -10,23 +10,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Create UPM tag branch
-        uses: hecomi/create-upm-branch-action@main
+        uses: OCB7D2D/create-upm-branch-action@main
         with:
           git-tag: ${{ github.ref_name }}
+          git-name: ${{ github.ref_name }}
           pkg-root-dir-path: Assets
           main-branch: master
 
-#      - name: Setup node
-#        uses: actions/setup-node@v2
-#        with:
-#          registry-url: 'https://registry.npmjs.org'
-#
-#      - name: NPM publish
-#        run: npm publish --access public
-#        env:
-#          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+      - name: Update tagged UPM master branch
+        uses: OCB7D2D/create-upm-branch-action@main
+        with:
+          git-tag: ${{ github.ref_name }}
+          git-name: master
+          pkg-root-dir-path: Assets
+          main-branch: master
+          upm-branch: upm
