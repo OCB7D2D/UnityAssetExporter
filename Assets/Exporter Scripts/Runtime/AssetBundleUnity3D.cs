@@ -28,6 +28,8 @@ namespace UnityAssetExporter
 
         [HideInInspector]
         public bool VerboseLogging = false;
+        [HideInInspector]
+        public bool DetailedLogging = false;
 
         [HideInInspector]
         public bool ShowPlatformTargets = false;
@@ -77,6 +79,8 @@ namespace UnityAssetExporter
 
         [HideInInspector]
         public bool StripInstancing = false;
+        [HideInInspector]
+        public bool StripNonInstancing = false;
 
         [HideInInspector]
         public bool StripLightmapPlain = true;
@@ -90,6 +94,16 @@ namespace UnityAssetExporter
         public bool StripLightmapShadowMask = true;
         [HideInInspector]
         public bool StripLightmapSubtractive = true;
+        [HideInInspector]
+        public bool StripLightprobeOn = false;
+        [HideInInspector]
+        public bool StripLightprobeOff = false;
+        [HideInInspector]
+        public bool StripLightForDeferred = true;
+        [HideInInspector]
+        public bool StripUnityHdrOn = false;
+        [HideInInspector]
+        public bool StripUnityHdrOff = true;
 
         [Space(10)]
 

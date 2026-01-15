@@ -106,6 +106,19 @@ shaders programmatically.
 
 ## Changelog
 
+### Version 0.9.0
+
+- Add more shader stripping option for passes
+- Further Improve shader compile logging
+
+### Version 0.8.1
+
+- Switch package version for master to 9999.0.0
+
+### Version 0.8.0
+
+- Add more shader stripping option for passes
+
 ### Version 0.7.2
 
 - Improve shader compile logging
