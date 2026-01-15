@@ -106,6 +106,11 @@ shaders programmatically.
 
 ## Changelog
 
+### Version 0.9.1
+
+- Optimize stripping for deferred vs shadow caster
+- Some keywords (can) require opposite stripping
+
 ### Version 0.9.0
 
 - Add more shader stripping option for passes

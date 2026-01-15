@@ -103,7 +103,9 @@ namespace UnityAssetExporter
         [HideInInspector]
         public bool StripUnityHdrOn = false;
         [HideInInspector]
-        public bool StripUnityHdrOff = true;
+        public bool StripUnityHdrOff = false;
+        [HideInInspector]
+        public bool StripHdrForDeferred = true;
 
         [Space(10)]
 

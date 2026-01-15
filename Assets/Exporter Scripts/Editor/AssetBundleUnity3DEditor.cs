@@ -284,10 +284,17 @@ namespace UnityAssetExporter
 
                 GUILayout.Space(8);
 
+                ToggleUI(ref script.StripHdrForDeferred,
+                    "Strip Deferred vs Shadow HDR variants");
+
+                EditorGUI.BeginDisabledGroup(
+                    script.StripHdrForDeferred);
                 ToggleUI(ref script.StripUnityHdrOn,
                     "Strip Unity HDR On variants");
                 ToggleUI(ref script.StripUnityHdrOff,
                     "Strip Unity HDR Off variants");
+                EditorGUI.EndDisabledGroup();
+
             }
 
             GUILayout.Space(12);
@@ -525,6 +532,13 @@ namespace UnityAssetExporter
                     "Create {0} with graphics API: {1}", Path.GetFileName(path),
                     string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
                 // Call the actual exporting functionality
+                foreach (var export in exports)
+                {
+                    if (export is UnityEngine.Shader fas)
+                    {
+                        
+                    }
+                }
                 #pragma warning disable CS0618 // Type or member is obsolete
                 BuildPipeline.BuildAssetBundle(null, exports, path, options, target);
                 #pragma warning restore CS0618 // Type or member is obsolete
@@ -673,12 +687,14 @@ namespace UnityAssetExporter
         static ShaderKeyword FOG_EXP2 = new ShaderKeyword("FOG_EXP2");
         static ShaderKeyword FOG_LINEAR = new ShaderKeyword("FOG_LINEAR");
         static ShaderKeyword INSTANCING = new ShaderKeyword("INSTANCING_ON");
+
         static ShaderKeyword UNITY_HDR_ON = new ShaderKeyword("UNITY_HDR_ON");
         static ShaderKeyword LIGHTPROBE_SH = new ShaderKeyword("LIGHTPROBE_SH");
 
         // Do the processing of shaders to potentially alter the shader variants to be compiled
         public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
         {
+            // return
             // Must have config
             if (Cfg == null) return;
             // In development, don't strip any variants
@@ -687,8 +703,8 @@ namespace UnityAssetExporter
             StripShaderVariantCounter.ShadersBefore = data.Count;
             // Strip certain pass variants in case render path is known to be unused
             if (Cfg.StripMetaPass && snippet.passType == PassType.Meta) data.Clear();
-            if (Cfg.StripDeferredPass && snippet.passType == PassType.Deferred) data.Clear();
-            if (Cfg.StripForwardBasePass && snippet.passType == PassType.ForwardBase) data.Clear();
+            if (Cfg.StripDeferredPass && snippet.passType == PassType.Deferred) data.Clear(); 
+            if (Cfg.StripForwardBasePass && snippet.passType == PassType.ForwardBase) data.Clear(); 
             if (Cfg.StripForwardAddPass && snippet.passType == PassType.ForwardAdd) data.Clear();
             if (Cfg.StripShadowCasterPass && snippet.passType == PassType.ShadowCaster) data.Clear();
             // Process the variants array from behind
@@ -708,15 +724,25 @@ namespace UnityAssetExporter
                 if (Cfg.StripFogExp && isFogExp) remove = true;
                 if (Cfg.StripFogExp2 && isFogExp2) remove = true;
                 if (Cfg.StripFogLinear && isFogLinear) remove = true;
-                if (Cfg.StripUnityHdrOn && isUnityHdrOn) remove = true;
-                if (Cfg.StripUnityHdrOff && !isUnityHdrOn) remove = true;
                 if (Cfg.StripInstancing && isInstanced) remove = true;
                 if (Cfg.StripNonInstancing && !isInstanced) remove = true;
+                // Do HDR stripping according to shader stage
+                // Deferred needs HDR, shadow caster does not
+                if (Cfg.StripHdrForDeferred == false) {
+                    if (Cfg.StripUnityHdrOn && isUnityHdrOn) remove = true;
+                    if (Cfg.StripUnityHdrOff && !isUnityHdrOn) remove = true;
+                }
+                else {
+                    if (snippet.passType == PassType.Deferred)
+                        remove |= !isUnityHdrOn;
+                    if (snippet.passType == PassType.ShadowCaster)
+                         remove |= isUnityHdrOn;
+                }
                 // Do light stripping according to shader stage
                 // Deferred needs light, shadow caster does not
                 if (Cfg.StripLightForDeferred == false) {
                     if (Cfg.StripLightprobeOn && isLightprobeSH) remove = true;
-                    if (Cfg.StripLightprobeOff && !isLightprobeSH) remove = true;
+                    if (Cfg.StripLightprobeOff && !isLightprobeSH) remove = true; 
                 }
                 else {
                     if (snippet.passType == PassType.Deferred)
