@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -144,6 +145,8 @@ namespace UnityAssetExporter
                 "Search folders recursively");
             EditorGUI.EndDisabledGroup();
 
+            ToggleUI(ref script.DetailedLogging,
+                "Enable Detailed Logging");
             ToggleUI(ref script.VerboseLogging,
                 "Enable Verbose Logging");
 
@@ -246,7 +249,10 @@ namespace UnityAssetExporter
 
                 ToggleUI(ref script.StripInstancing,
                     "Strip Instancing variants",
-                    "Should be safe to strip if you know that no material will use geometry instancing.");
+                    "Should be safe to strip if you know that no material will ever use geometry instancing.");
+                ToggleUI(ref script.StripNonInstancing,
+                    "Strip Non-Instancing variants",
+                    "Should be safe to strip if you know that materials will always use geometry instancing.");
 
                 GUILayout.Space(8);
 
@@ -263,6 +269,25 @@ namespace UnityAssetExporter
                 ToggleUI(ref script.StripLightmapSubtractive,
                     "Strip Baked Subtractive Lightmap variants");
 
+                GUILayout.Space(8);
+
+                ToggleUI(ref script.StripLightForDeferred,
+                    "Strip Deferred vs Shadow Light Probe");
+
+                EditorGUI.BeginDisabledGroup(
+                    script.StripLightForDeferred);
+                ToggleUI(ref script.StripLightprobeOn,
+                    "Strip Light Probe On variants");
+                ToggleUI(ref script.StripLightprobeOff,
+                    "Strip Light Probe Off variants");
+                EditorGUI.EndDisabledGroup();
+
+                GUILayout.Space(8);
+
+                ToggleUI(ref script.StripUnityHdrOn,
+                    "Strip Unity HDR On variants");
+                ToggleUI(ref script.StripUnityHdrOff,
+                    "Strip Unity HDR Off variants");
             }
 
             GUILayout.Space(12);
@@ -326,7 +351,7 @@ namespace UnityAssetExporter
                     foreach (var obj in script.Objects)
                         CollectAssets(obj, ref assets,
                             script.SearchFoldersRecursively);
-                    if (script.VerboseLogging)
+                    if (script.DetailedLogging)
                         foreach (var asset in assets)
                             Debug.LogFormat(
                                 "  found {0}\n   of type {1}\n",
@@ -462,7 +487,8 @@ namespace UnityAssetExporter
             var oldFogKeepLinear = gfxCfg.FindProperty("m_FogKeepLinear").boolValue;
             var oldFogKeepExp = gfxCfg.FindProperty("m_FogKeepExp").boolValue;
             var oldFogKeepExp2 = gfxCfg.FindProperty("m_FogKeepExp2").boolValue;
-            var oldFogStripInstancing = gfxCfg.FindProperty("m_InstancingStripping").intValue;
+            var oldStripInstancing = gfxCfg.FindProperty("m_InstancingStripping").intValue;
+            // var oldStripNonInstancing = gfxCfg.FindProperty("m_NonInstancingStripping").intValue;
             var oldLightmapStripping = gfxCfg.FindProperty("m_LightmapStripping").boolValue;
             var oldLightmapKeepPlain = gfxCfg.FindProperty("m_LightmapKeepPlain").boolValue;
             var oldLightmapKeepDirCombined = gfxCfg.FindProperty("m_LightmapKeepDirCombined").boolValue;
@@ -472,11 +498,12 @@ namespace UnityAssetExporter
             var oldLightmapKeepSubtractive = gfxCfg.FindProperty("m_LightmapKeepSubtractive").boolValue;
             // Always enable shader variant stripping for best results
             // Otherwise we are depending on the actual project setting
-            GraphicsSettings.logWhenShaderIsCompiled = script.VerboseLogging;
+            GraphicsSettings.logWhenShaderIsCompiled = script.DetailedLogging;
             gfxCfg.FindProperty("m_FogStripping").boolValue = true;
             gfxCfg.FindProperty("m_LightmapStripping").boolValue = true;
             // Either fully strip instancing or keep it (not sure if "unused" makes much sense)
             gfxCfg.FindProperty("m_InstancingStripping").intValue = script.StripInstancing ? 1 : 2;
+            // gfxCfg.FindProperty("m_NonInstancingStripping").intValue = script.StripNonInstancing ? 1 : 2;
             gfxCfg.FindProperty("m_FogKeepLinear").boolValue = !script.StripFogLinear;
             gfxCfg.FindProperty("m_FogKeepExp").boolValue = !script.StripFogExp;
             gfxCfg.FindProperty("m_FogKeepExp2").boolValue = !script.StripFogExp2;
@@ -494,7 +521,7 @@ namespace UnityAssetExporter
             try
             {
                 // Give verbose log message to report use APIs
-                if (script.VerboseLogging) Debug.LogFormat(
+                if (script.DetailedLogging) Debug.LogFormat(
                     "Create {0} with graphics API: {1}", Path.GetFileName(path),
                     string.Join(", ", Array.ConvertAll(apis, x => x.ToString())));
                 // Call the actual exporting functionality
@@ -516,8 +543,9 @@ namespace UnityAssetExporter
                 gfxCfg.FindProperty("m_FogKeepLinear").boolValue = oldFogKeepLinear;
                 gfxCfg.FindProperty("m_FogKeepExp").boolValue = oldFogKeepExp;
                 gfxCfg.FindProperty("m_FogKeepExp2").boolValue = oldFogKeepExp2;
-                gfxCfg.FindProperty("m_InstancingStripping").intValue = oldFogStripInstancing;
                 gfxCfg.FindProperty("m_LightmapStripping").boolValue = oldLightmapStripping;
+                gfxCfg.FindProperty("m_InstancingStripping").intValue = oldStripInstancing;
+                // gfxCfg.FindProperty("m_NonInstancingStripping").intValue = oldStripNonInstancing;
                 gfxCfg.FindProperty("m_LightmapKeepPlain").boolValue = oldLightmapKeepPlain;
                 gfxCfg.FindProperty("m_LightmapKeepDirCombined").boolValue = oldLightmapKeepDirCombined;
                 gfxCfg.FindProperty("m_LightmapKeepDynamicPlain").boolValue = oldLightmapKeepDynamicPlain;
@@ -644,6 +672,9 @@ namespace UnityAssetExporter
         static ShaderKeyword FOG_EXP = new ShaderKeyword("FOG_EXP");
         static ShaderKeyword FOG_EXP2 = new ShaderKeyword("FOG_EXP2");
         static ShaderKeyword FOG_LINEAR = new ShaderKeyword("FOG_LINEAR");
+        static ShaderKeyword INSTANCING = new ShaderKeyword("INSTANCING_ON");
+        static ShaderKeyword UNITY_HDR_ON = new ShaderKeyword("UNITY_HDR_ON");
+        static ShaderKeyword LIGHTPROBE_SH = new ShaderKeyword("LIGHTPROBE_SH");
 
         // Do the processing of shaders to potentially alter the shader variants to be compiled
         public void OnProcessShader(Shader shader, ShaderSnippetData snippet, IList<ShaderCompilerData> data)
@@ -656,10 +687,10 @@ namespace UnityAssetExporter
             StripShaderVariantCounter.ShadersBefore = data.Count;
             // Strip certain pass variants in case render path is known to be unused
             if (Cfg.StripMetaPass && snippet.passType == PassType.Meta) data.Clear();
-            else if (Cfg.StripDeferredPass && snippet.passType == PassType.Deferred) data.Clear(); 
-            else if (Cfg.StripForwardBasePass && snippet.passType == PassType.ForwardBase) data.Clear(); 
-            else if (Cfg.StripForwardAddPass && snippet.passType == PassType.ForwardAdd) data.Clear();
-            else if (Cfg.StripShadowCasterPass && snippet.passType == PassType.ShadowCaster) data.Clear();
+            if (Cfg.StripDeferredPass && snippet.passType == PassType.Deferred) data.Clear();
+            if (Cfg.StripForwardBasePass && snippet.passType == PassType.ForwardBase) data.Clear();
+            if (Cfg.StripForwardAddPass && snippet.passType == PassType.ForwardAdd) data.Clear();
+            if (Cfg.StripShadowCasterPass && snippet.passType == PassType.ShadowCaster) data.Clear();
             // Process the variants array from behind
             for (int i = data.Count - 1; i != -1; --i)
             {
@@ -667,19 +698,47 @@ namespace UnityAssetExporter
                 bool isFogExp = data[i].shaderKeywordSet.IsEnabled(FOG_EXP);
                 bool isFogExp2 = data[i].shaderKeywordSet.IsEnabled(FOG_EXP2);
                 bool isFogLinear = data[i].shaderKeywordSet.IsEnabled(FOG_LINEAR);
+                bool isInstanced = data[i].shaderKeywordSet.IsEnabled(INSTANCING);
+                bool isUnityHdrOn = data[i].shaderKeywordSet.IsEnabled(UNITY_HDR_ON);
+                bool isLightprobeSH = data[i].shaderKeywordSet.IsEnabled(LIGHTPROBE_SH);
                 // Debug.Log(shader.name + " Keywords " + string.Join(", ",
                 //     data[i].shaderKeywordSet.GetShaderKeywords()));
                 bool isFog = isFogExp | isFogExp2 | isFogLinear;
                 if (Cfg.StripFogNone && !isFog) remove = true;
-                else if (Cfg.StripFogExp && isFogExp) remove = true;
-                else if (Cfg.StripFogExp2 && isFogExp2) remove = true;
-                else if (Cfg.StripFogLinear && isFogLinear) remove = true;
+                if (Cfg.StripFogExp && isFogExp) remove = true;
+                if (Cfg.StripFogExp2 && isFogExp2) remove = true;
+                if (Cfg.StripFogLinear && isFogLinear) remove = true;
+                if (Cfg.StripUnityHdrOn && isUnityHdrOn) remove = true;
+                if (Cfg.StripUnityHdrOff && !isUnityHdrOn) remove = true;
+                if (Cfg.StripInstancing && isInstanced) remove = true;
+                if (Cfg.StripNonInstancing && !isInstanced) remove = true;
+                // Do light stripping according to shader stage
+                // Deferred needs light, shadow caster does not
+                if (Cfg.StripLightForDeferred == false) {
+                    if (Cfg.StripLightprobeOn && isLightprobeSH) remove = true;
+                    if (Cfg.StripLightprobeOff && !isLightprobeSH) remove = true;
+                }
+                else {
+                    if (snippet.passType == PassType.Deferred)
+                        remove |= !isLightprobeSH;
+                    if (snippet.passType == PassType.ShadowCaster)
+                         remove |= isLightprobeSH;
+                }
+
                 if (remove) data.RemoveAt(i);
             }
             // Print a log if verbose logging is enabled
-            if (Cfg.VerboseLogging) Debug.Log(string.Format(
-                "{0}: {1} variants stripped: {3}, compiling: {2}",
-                shader.name, snippet.passName, data.Count,
+            for (int i = 0; i < data.Count; i++)
+            {
+                if (Cfg.VerboseLogging) Debug.Log(string.Format(
+                    "{0}: {1} {2} Shader for {3} on {4} [{5}]",
+                    i, snippet.passType, snippet.shaderType,
+                    data[i].shaderCompilerPlatform, data[i].buildTarget,
+                    string.Join(", ", data[i].shaderKeywordSet.GetShaderKeywords())));
+            }
+            if (Cfg.DetailedLogging) Debug.Log(string.Format(
+                "{0}: {1} {2} variants stripped: {4}, compiling: {3}",
+                shader.name, snippet.passType, snippet.shaderType, data.Count,
                 StripShaderVariantCounter.ShadersBefore - data.Count));
         }
     }
