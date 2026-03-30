@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -38,8 +37,11 @@ namespace UnityAssetExporter
                     UnityEngine.Object asset = AssetDatabase.LoadAssetAtPath
                         <UnityEngine.Object>(AssetDatabase.GUIDToAssetPath(guid));
                     string fname = AssetDatabase.GetAssetPath(asset);
-                    if (recursive) CollectAssets(asset, ref exports, recursive);
-                    else if (!AssetDatabase.IsValidFolder(fname)) exports.Add(asset);
+                    string rpath = Path.GetRelativePath(path, fname);
+                    // Skip assets that are in sub-folders (unless recursive is set)
+                    if (!recursive && Path.GetFileName(rpath) != rpath) continue;
+                    // Add all assets (exception for all folders)
+                    if (!AssetDatabase.IsValidFolder(fname)) exports.Add(asset);
                 }
             }
             // Just add as is to export
